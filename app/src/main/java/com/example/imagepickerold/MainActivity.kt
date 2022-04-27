@@ -10,6 +10,7 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.imagepickerold.databinding.ActivityMainBinding
+import kotlinx.coroutines.*
 import java.io.FileDescriptor
 import java.lang.RuntimeException
 import java.util.concurrent.ExecutorService
@@ -22,6 +23,12 @@ class MainActivity : AppCompatActivity() {
     private val PICK_IMAGE = 1
     private val workerHandler = Handler(Looper.getMainLooper())
     private val workerThread: ExecutorService = Executors.newCachedThreadPool()
+    private val parentJob = Job()
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + parentJob)
+
+    private val job = SupervisorJob()
+    private val ioScope by lazy { CoroutineScope(job + Dispatchers.IO) }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,28 +80,35 @@ class MainActivity : AppCompatActivity() {
             val uri = data.data
 
             if (uri != null) {
-                setImageAsyncTask(uri)
+                //setImageAsyncTask(uri)
+                exampleMethod(uri)
             }
 
         }
     }
 
+
     private fun setImageAsyncTask(uri: Uri) {
 
-        workerThread.execute {
-            try {
-                val bitmap = getBitmap(uri)
-                bitmap?.let {
-                    workerHandler.post {
-                        // binding.imageView.setImageURI(uri)
-                        binding.imageView.setImageBitmap(it)
-                    }
-                }
-            }catch (ex:RuntimeException){
-                ex.printStackTrace()
+        try {
+
+            //val bitmap = getBitmap(uri)
+            var bitmap: Bitmap? = null
+
+            coroutineScope.launch {
+                bitmap = getOriginalBitmapAsync(uri).await()
             }
 
+            bitmap?.let {
+                workerHandler.post {
+                    // binding.imageView.setImageURI(uri)
+                    binding.imageView.setImageBitmap(it)
+                }
+            }
+        } catch (ex: RuntimeException) {
+            ex.printStackTrace()
         }
+
 
         /*workerHandler.post {
             getBitmap(uri)?.let {
@@ -130,5 +144,95 @@ class MainActivity : AppCompatActivity() {
             null
         }
     }
+
+    // 1
+    private fun getOriginalBitmapAsync(fileUri: Uri): Deferred<Bitmap> =
+        // 2
+        coroutineScope.async(Dispatchers.IO) {
+            // 3
+            /*URL(fileUri).openStream().use {
+                return@async BitmapFactory.decodeStream(it)
+            }*/
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return@async ImageDecoder.decodeBitmap(
+                    ImageDecoder.createSource(
+                        this@MainActivity.contentResolver,
+                        fileUri
+                    )
+                )
+            } else {
+                return@async MediaStore.Images.Media.getBitmap(
+                    this@MainActivity.contentResolver,
+                    fileUri
+                )
+            }
+        }
+
+    private fun sampleOne(fileUri: Uri): Bitmap? {
+
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(this.contentResolver, fileUri))
+            } else {
+                MediaStore.Images.Media.getBitmap(this.contentResolver, fileUri)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun exampleMethod(fileUri: Uri) {
+        // Starts a new coroutine within the scope
+        ioScope.launch {
+            // New coroutine that can call suspend functions
+            val bitmap = fetchData(fileUri)
+            //To Switch the context of Dispatchers
+            withContext(Dispatchers.Main) {
+                bitmap?.let {
+                    binding.imageView.setImageBitmap(it)
+                }
+            }
+        }
+    }
+
+    private suspend fun exampleMethod2(fileUri: Uri) {
+
+        ioScope.launch {
+
+            val result = ioScope.async(Dispatchers.IO) {
+                fetchData(fileUri)
+            }
+            result.await()
+
+            withContext(Dispatchers.Main) {
+
+            }
+        }
+
+    }
+
+
+    fun fetchData(fileUri: Uri): Bitmap? {
+
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(this.contentResolver, fileUri))
+            } else {
+                MediaStore.Images.Media.getBitmap(this.contentResolver, fileUri)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        parentJob.cancel()
+        job.cancel()
+    }
+
 
 }
