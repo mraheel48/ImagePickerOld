@@ -7,6 +7,7 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.*
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.imagepickerold.databinding.ActivityMainBinding
@@ -81,12 +82,28 @@ class MainActivity : AppCompatActivity() {
 
             if (uri != null) {
                 //setImageAsyncTask(uri)
-                exampleMethod(uri)
+                //exampleMethod(uri)
+               workingFine(uri)
+
             }
 
         }
     }
 
+    private  fun workingFine(uri: Uri){
+
+        ioScope.launch {
+            // New coroutine that can call suspend functions
+            val bitmap = scaleDown(fetchData(uri),720f)
+            //To Switch the context of Dispatchers
+            withContext(Dispatchers.Main) {
+                bitmap?.let {
+                    binding.imageView.setImageBitmap(it)
+                }
+            }
+        }
+
+    }
 
     private fun setImageAsyncTask(uri: Uri) {
 
@@ -226,6 +243,36 @@ class MainActivity : AppCompatActivity() {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun scaleDown(
+        realImage: Bitmap?, maxImageSize: Float
+    ): Bitmap? {
+
+        if (realImage != null) {
+
+            Log.d("myBitmapVal", "${realImage.width} -- ${realImage.height}")
+
+            return if (realImage.width > maxImageSize || realImage.height > maxImageSize) {
+
+                val ratio: Float = realImage.height.toFloat() / realImage.width.toFloat()
+                val width = Constants.screenWidthInPixel
+                val height = Constants.screenWidthInPixel * ratio
+
+                Log.d("myNewBitmap", "${ratio}")
+
+                return Bitmap.createScaledBitmap(
+                    realImage, width.toInt(),
+                    height.toInt(), true
+                )
+
+            } else {
+                realImage
+            }
+        } else {
+            return null
+        }
+
     }
 
     override fun onDestroy() {
