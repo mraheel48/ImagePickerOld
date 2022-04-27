@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.imagepickerold.databinding.ActivityMainBinding
 import java.io.FileDescriptor
+import java.lang.RuntimeException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -18,7 +19,7 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    val PICK_IMAGE = 1
+    private val PICK_IMAGE = 1
     private val workerHandler = Handler(Looper.getMainLooper())
     private val workerThread: ExecutorService = Executors.newCachedThreadPool()
 
@@ -81,12 +82,18 @@ class MainActivity : AppCompatActivity() {
     private fun setImageAsyncTask(uri: Uri) {
 
         workerThread.execute {
-            val bitmap = getBitmap(uri)
-            bitmap?.let {
-                workerHandler.post {
-                    binding.imageView.setImageBitmap(it)
+            try {
+                val bitmap = getBitmap(uri)
+                bitmap?.let {
+                    workerHandler.post {
+                        // binding.imageView.setImageURI(uri)
+                        binding.imageView.setImageBitmap(it)
+                    }
                 }
+            }catch (ex:RuntimeException){
+                ex.printStackTrace()
             }
+
         }
 
         /*workerHandler.post {
