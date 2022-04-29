@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.imagepickerold.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
 import java.io.FileDescriptor
+import java.io.IOException
 import java.lang.RuntimeException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -103,6 +104,20 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    }
+
+    //TODO takes URI of the image and returns bitmap
+    private fun uriToBitmap(selectedFileUri: Uri): Bitmap? {
+        try {
+            val parcelFileDescriptor = contentResolver.openFileDescriptor(selectedFileUri, "r")
+            val fileDescriptor: FileDescriptor = parcelFileDescriptor!!.fileDescriptor
+            val image = BitmapFactory.decodeFileDescriptor(fileDescriptor)
+            parcelFileDescriptor.close()
+            return image
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return null
     }
 
     private fun setImageAsyncTask(uri: Uri) {
