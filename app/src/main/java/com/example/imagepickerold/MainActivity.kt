@@ -11,9 +11,8 @@ import android.net.Uri
 import android.os.*
 import android.provider.MediaStore
 import android.util.Log
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.Toast
+import android.view.ViewTreeObserver
+import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContentProviderCompat.requireContext
@@ -58,11 +57,31 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
     private val cameraPermission = arrayOf(Manifest.permission.CAMERA)
 
+    private var screenWidth:Float = 720f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+
+        val viewTreeObserver = binding.rootLayout.viewTreeObserver
+
+        if (viewTreeObserver!!.isAlive) {
+
+            viewTreeObserver.addOnGlobalLayoutListener(object :
+                ViewTreeObserver.OnGlobalLayoutListener {
+                override fun onGlobalLayout() {
+                    binding.rootLayout.viewTreeObserver?.removeOnGlobalLayoutListener(this)
+
+                    Log.d("myWidth","${binding.rootLayout.width} -- ${binding.rootLayout.height}")
+
+                    screenWidth = binding.rootLayout.width.toFloat()
+
+                }
+            })
+        }
+
 
         binding.imagePicker.setOnClickListener {
             //threeWayToPickerUpImage()
@@ -74,6 +93,8 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
             cameraStatus = true
             openCamera()
         }
+
+
     }
 
     private fun openGallery() {
@@ -172,9 +193,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
             if (success) {
 
                 if (cam_uri != null) {
-                    Log.d("myCameraImage", "image is save")
-                    val bitmap = getBitmap(cam_uri!!)
+                    val bitmap = scaleDown(getBitmap(cam_uri!!), screenWidth)
+                   // val bitmap = getBitmap(cam_uri!!)
                     binding.imageView.setImageBitmap(bitmap!!)
+                    Log.d("myCameraImage", "${bitmap.width}")
                 } else {
                     Log.d("myCameraImage", "image is not save")
                 }
@@ -206,7 +228,8 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
                 val value = it.data?.data
 
                 if (value != null) {
-                    val bitmap = getBitmap(value)
+                    val bitmap = scaleDown(getBitmap(value), screenWidth)
+                   // val bitmap = getBitmap(value)
                     binding.imageView.setImageBitmap(bitmap!!)
                 }
 
@@ -285,7 +308,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
         ioScope.launch {
             // New coroutine that can call suspend functions
-            val bitmap = scaleDown(fetchData(uri), 720f)
+            val bitmap = scaleDown(fetchData(uri), screenWidth)
             //To Switch the context of Dispatchers
             withContext(Dispatchers.Main) {
                 bitmap?.let {
@@ -454,15 +477,15 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
         if (realImage != null) {
 
-            Log.d("myBitmapVal", "${realImage.width} -- ${realImage.height}")
+            Log.d("myBitmapVal", "${realImage.width} -- ${realImage.height} -- max width ${maxImageSize}")
 
             return if (realImage.width > maxImageSize || realImage.height > maxImageSize) {
 
                 val ratio: Float = realImage.height.toFloat() / realImage.width.toFloat()
-                val width = Constants.screenWidthInPixel
-                val height = Constants.screenWidthInPixel * ratio
+                val width = maxImageSize
+                val height = maxImageSize * ratio
 
-                Log.d("myNewBitmap", "${ratio}")
+                Log.d("myNewBitmap", "$ratio")
 
                 return Bitmap.createScaledBitmap(
                     realImage, width.toInt(),
