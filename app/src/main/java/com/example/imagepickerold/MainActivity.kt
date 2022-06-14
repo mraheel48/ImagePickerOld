@@ -11,14 +11,18 @@ import android.net.Uri
 import android.os.*
 import android.provider.MediaStore
 import android.util.Log
+import android.widget.Button
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.core.content.FileProvider
 import com.example.imagepickerold.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
+import java.io.File
 import java.io.FileDescriptor
 import java.io.IOException
 import java.util.concurrent.ExecutorService
@@ -87,6 +91,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
         if (EasyPermissions.hasPermissions(this, *cameraPermission)) {
             openCameraNewWay()
+            //registerTakePictureLauncher(initTempUri())
         } else {
             EasyPermissions.requestPermissions(
                 this, "We need permissions because this and that",
@@ -95,20 +100,70 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
         }
     }
 
+    private fun initTempUri(): Uri? {
+        //gets the temp_images dir
+        val tempImagesDir = File(
+            applicationContext.filesDir, //this function gets the external cache dir
+            getString(R.string.temp_images_dir)
+        ) //gets the directory for the temporary images dir
+
+        tempImagesDir.mkdir() //Create the temp_images dir
+
+        //Creates the temp_image.jpg file
+        val tempImage = File(
+            tempImagesDir, //prefix the new abstract path with the temporary images dir path
+            getString(R.string.temp_image)
+        ) //gets the abstract temp_image file name
+
+        return if (Build.VERSION.SDK_INT >= 24) {
+            FileProvider.getUriForFile(
+                applicationContext,
+                getString(R.string.authorities),
+                tempImage
+            )
+        } else {
+            Uri.fromFile(tempImage)
+        }
+
+
+        //Returns the Uri object to be used with ActivityResultLauncher
+        /*return FileProvider.getUriForFile(
+            applicationContext,
+            getString(R.string.authorities),
+            tempImage
+        )*/
+    }
+
+    private fun registerTakePictureLauncher(path: Uri) {
+
+        //Creates the ActivityResultLauncher
+        val resultLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) {
+            binding.imageView.setImageURI(null) //rough handling of image changes. Real code need to handle different API levels.
+            binding.imageView.setImageURI(path)
+        }
+
+        resultLauncher.launch(path) //launches the activity here
+
+    }
+
     var cam_uri: Uri? = null
 
     private fun openCameraNewWay() {
-        val values = ContentValues()
-        values.put(MediaStore.Images.Media.TITLE, "New Picture")
-        values.put(MediaStore.Images.Media.DESCRIPTION, "From Camera")
-        cam_uri = contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            values
-        )
-        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cam_uri)
-        cameraIntentNew.launch(cameraIntent)
+        /* val values = ContentValues()
+         values.put(MediaStore.Images.Media.TITLE, "New Picture")
+         values.put(MediaStore.Images.Media.DESCRIPTION, "From Camera")
+         cam_uri = contentResolver.insert(
+             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+             values
+         )
+         val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cam_uri)*/
+        cam_uri = initTempUri()
+        cam_uri?.let {
+            takePicture.launch(it)
+        }
     }
+
 
     private val takePicture =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success: Boolean ->
@@ -141,6 +196,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
             }
         }
     }
+
     // Receiver
     private val getResult =
         registerForActivityResult(
@@ -434,8 +490,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
         if (cameraStatus) {
             Log.d("onPermissionsGranted", "open Camera")
+            openCameraNewWay()
         } else {
             Log.d("onPermissionsGranted", "open Gallery")
+            openGalleryNewWay()
         }
     }
 
