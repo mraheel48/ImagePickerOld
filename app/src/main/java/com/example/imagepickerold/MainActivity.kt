@@ -1,5 +1,8 @@
 package com.example.imagepickerold
 
+import android.Manifest
+import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,20 +12,24 @@ import android.os.*
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContentProviderCompat.requireContext
 import com.example.imagepickerold.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
+import pub.devrel.easypermissions.AppSettingsDialog
+import pub.devrel.easypermissions.EasyPermissions
 import java.io.FileDescriptor
 import java.io.IOException
-import java.lang.RuntimeException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
     private lateinit var binding: ActivityMainBinding
-    private val PICK_IMAGE = 1
+    private val PICK_IMAGE = 123123
+    private val CAMERA_IMAGE = 123
     private val workerHandler = Handler(Looper.getMainLooper())
     private val workerThread: ExecutorService = Executors.newCachedThreadPool()
     private val parentJob = Job()
@@ -31,6 +38,22 @@ class MainActivity : AppCompatActivity() {
     private val job = SupervisorJob()
     private val ioScope by lazy { CoroutineScope(job + Dispatchers.IO) }
 
+    private var cameraStatus: Boolean = false
+
+    private val readPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        arrayOf(
+            Manifest.permission.ACCESS_MEDIA_LOCATION,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
+    } else {
+        arrayOf(
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
+    }
+
+    private val cameraPermission = arrayOf(Manifest.permission.CAMERA)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,8 +61,119 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.imagePicker.setOnClickListener {
-            threeWayToPickerUpImage()
+            //threeWayToPickerUpImage()
+            cameraStatus = false
+            openGallery()
         }
+
+        binding.btnCamera.setOnClickListener {
+            cameraStatus = true
+            openCamera()
+        }
+    }
+
+    private fun openGallery() {
+        if (EasyPermissions.hasPermissions(this, *readPermission)) {
+            openGalleryNewWay()
+        } else {
+            EasyPermissions.requestPermissions(
+                this, "We need permissions because this and that",
+                PICK_IMAGE, *readPermission
+            )
+        }
+    }
+
+    private fun openCamera() {
+
+        if (EasyPermissions.hasPermissions(this, *cameraPermission)) {
+            openCameraNewWay()
+        } else {
+            EasyPermissions.requestPermissions(
+                this, "We need permissions because this and that",
+                CAMERA_IMAGE, *cameraPermission
+            )
+        }
+    }
+
+    var cam_uri: Uri? = null
+
+    private fun openCameraNewWay() {
+        val values = ContentValues()
+        values.put(MediaStore.Images.Media.TITLE, "New Picture")
+        values.put(MediaStore.Images.Media.DESCRIPTION, "From Camera")
+        cam_uri = contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            values
+        )
+        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, cam_uri)
+        cameraIntentNew.launch(cameraIntent)
+    }
+
+    private val takePicture =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success: Boolean ->
+
+            // The image was saved into the given Uri -> do something with it
+            if (success) {
+
+                if (cam_uri != null) {
+                    Log.d("myCameraImage", "image is save")
+                    val bitmap = getBitmap(cam_uri!!)
+                    binding.imageView.setImageBitmap(bitmap!!)
+                } else {
+                    Log.d("myCameraImage", "image is not save")
+                }
+
+            }
+        }
+
+    private val cameraIntentNew = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+
+            if (cam_uri != null) {
+                Log.d("myCameraImage", "image is save")
+                val bitmap = getBitmap(cam_uri!!)
+                binding.imageView.setImageBitmap(bitmap!!)
+            } else {
+                Log.d("myCameraImage", "image is not save")
+            }
+        }
+    }
+    // Receiver
+    private val getResult =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                val value = it.data?.data
+
+                if (value != null) {
+                    val bitmap = getBitmap(value)
+                    binding.imageView.setImageBitmap(bitmap!!)
+                }
+
+                Log.d("myData", "${value}")
+
+            }
+        }
+
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String?>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this)
+    }
+
+    private fun openGalleryNewWay() {
+        val intent = Intent()
+        intent.action = Intent.ACTION_PICK
+        intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*")
+        getResult.launch(intent)
     }
 
     //But in some devices, while setting the intent type, the above solution will clear the intent data (MediaStore.Images.Media.EXTERNAL_CONTENT_URI) which could hinder the gallery opening process.
@@ -84,18 +218,18 @@ class MainActivity : AppCompatActivity() {
             if (uri != null) {
                 //setImageAsyncTask(uri)
                 //exampleMethod(uri)
-               workingFine(uri)
+                workingFine(uri)
 
             }
 
         }
     }
 
-    private  fun workingFine(uri: Uri){
+    private fun workingFine(uri: Uri) {
 
         ioScope.launch {
             // New coroutine that can call suspend functions
-            val bitmap = scaleDown(fetchData(uri),720f)
+            val bitmap = scaleDown(fetchData(uri), 720f)
             //To Switch the context of Dispatchers
             withContext(Dispatchers.Main) {
                 bitmap?.let {
@@ -177,7 +311,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 1
     private fun getOriginalBitmapAsync(fileUri: Uri): Deferred<Bitmap> =
         // 2
         coroutineScope.async(Dispatchers.IO) {
@@ -245,7 +378,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-
     fun fetchData(fileUri: Uri): Bitmap? {
 
         return try {
@@ -294,6 +426,24 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         parentJob.cancel()
         job.cancel()
+    }
+
+    override fun onPermissionsGranted(requestCode: Int, perms: MutableList<String>) {
+
+        Log.d("myPermission", "allow")
+
+        if (cameraStatus) {
+            Log.d("onPermissionsGranted", "open Camera")
+        } else {
+            Log.d("onPermissionsGranted", "open Gallery")
+        }
+    }
+
+    override fun onPermissionsDenied(requestCode: Int, perms: MutableList<String>) {
+        Log.d("myPermission", "not allow")
+        if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
+            AppSettingsDialog.Builder(this).build().show()
+        }
     }
 
 

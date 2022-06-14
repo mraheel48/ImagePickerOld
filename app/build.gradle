@@ -6,12 +6,12 @@ plugins {
 
 android {
 
-    compileSdk 32
+    compileSdk 31
 
     defaultConfig {
         applicationId "com.example.imagepickerold"
         minSdk 21
-        targetSdk 32
+        targetSdk 31
         versionCode 1
         versionName "1.0"
 
@@ -25,11 +25,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11.toString()
-        targetCompatibility JavaVersion.VERSION_11.toString()
+        sourceCompatibility JavaVersion.VERSION_1_8.toString()
+        targetCompatibility JavaVersion.VERSION_1_8.toString()
     }
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
 
     buildFeatures {
@@ -41,15 +41,15 @@ dependencies {
 
     implementation 'androidx.core:core-ktx:1.7.0'
     //implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'androidx.appcompat:appcompat:1.4.1'
-    implementation 'com.google.android.material:material:1.5.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.1")
 
     // For developers using AndroidX in their applications
-    //implementation 'pub.devrel:easypermissions:3.0.0'
+    implementation 'pub.devrel:easypermissions:3.0.0'
 }
