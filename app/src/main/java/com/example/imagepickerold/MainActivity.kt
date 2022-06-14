@@ -199,7 +199,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
                     val bitmap = scaleDown(getBitmap(cam_uri!!), screenWidth)
                     // val bitmap = getBitmap(cam_uri!!)
                     if (bitmap != null) {
-                        Constants.faceBitmap = bitmap
+                        Constants.mainBitmap = bitmap
                         StoreManager.setCurrentOriginalBitmap(this, bitmap)
                         startActivity(Intent(this, BackgroundRemover::class.java))
                     }
@@ -242,7 +242,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
                     val bitmap = scaleDown(getBitmap(value), screenWidth)
                     //binding.imageView.setImageBitmap(bitmap!!)
                     if (bitmap != null) {
-                        Constants.faceBitmap = bitmap
+                        Constants.mainBitmap = bitmap
                         StoreManager.setCurrentOriginalBitmap(this, bitmap)
                         startActivity(Intent(this, BackgroundRemover::class.java))
                     }

@@ -9,7 +9,6 @@ import android.os.Looper
 import android.view.View
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
 import androidx.palette.graphics.Palette
 import com.example.imagepickerold.asyncWorking.MLCropAsyncTask
 import com.example.imagepickerold.databinding.ActivityBackgroundRemoverBinding
@@ -39,19 +38,20 @@ class BackgroundRemover : AppCompatActivity() {
 
         binding.cropProgressBar.visibility = View.VISIBLE
 
-        workerThread.execute {
+        StoreManager.setCurrentCropedBitmap(this, null)
+        StoreManager.setCurrentCroppedMaskBitmap(this, null)
 
-            StoreManager.setCurrentCropedBitmap(this, null)
-            StoreManager.setCurrentCroppedMaskBitmap(this, null)
-
-            if (Constants.faceBitmap != null) {
-                StoreManager.setCurrentOriginalBitmap(this, Constants.faceBitmap)
-                settingBitmap(Constants.faceBitmap!!)
+        workerHandler.postDelayed({
+            if (Constants.mainBitmap != null) {
+                StoreManager.setCurrentOriginalBitmap(this, Constants.mainBitmap)
+                settingBitmap(Constants.mainBitmap!!)
 
             } else {
                 Util.showToast(this, "Bitmap is null")
             }
-        }
+        },2000)
+
+
     }
 
     private fun settingBitmap(bitmap: Bitmap) {
@@ -64,8 +64,8 @@ class BackgroundRemover : AppCompatActivity() {
 
         workerHandler.post {
             binding.rootLayout.layoutParams = ConstraintLayout.LayoutParams(
-                Constants.faceBitmap!!.width,
-                Constants.faceBitmap!!.height
+                Constants.mainBitmap!!.width,
+                Constants.mainBitmap!!.height
             )
 
             cutmaskNew()
