@@ -2,7 +2,6 @@ package com.example.imagepickerold
 
 import android.Manifest
 import android.app.Activity
-import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -15,9 +14,9 @@ import android.view.ViewTreeObserver
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.FileProvider
 import com.example.imagepickerold.databinding.ActivityMainBinding
+import com.example.imagepickerold.utils.StoreManager
 import kotlinx.coroutines.*
 import pub.devrel.easypermissions.AppSettingsDialog
 import pub.devrel.easypermissions.EasyPermissions
@@ -57,7 +56,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
     private val cameraPermission = arrayOf(Manifest.permission.CAMERA)
 
-    private var screenWidth:Float = 720f
+    private var screenWidth: Float = 720f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,7 +73,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
                 override fun onGlobalLayout() {
                     binding.rootLayout.viewTreeObserver?.removeOnGlobalLayoutListener(this)
 
-                    Log.d("myWidth","${binding.rootLayout.width} -- ${binding.rootLayout.height}")
+                    Log.d("myWidth", "${binding.rootLayout.width} -- ${binding.rootLayout.height}")
 
                     screenWidth = binding.rootLayout.width.toFloat()
 
@@ -86,11 +85,15 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
         binding.imagePicker.setOnClickListener {
             //threeWayToPickerUpImage()
             cameraStatus = false
+            StoreManager.setCurrentCropedBitmap(this, null)
+            StoreManager.setCurrentCroppedMaskBitmap(this, null)
             openGallery()
         }
 
         binding.btnCamera.setOnClickListener {
             cameraStatus = true
+            StoreManager.setCurrentCropedBitmap(this, null)
+            StoreManager.setCurrentCroppedMaskBitmap(this, null)
             openCamera()
         }
 
@@ -194,9 +197,12 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
                 if (cam_uri != null) {
                     val bitmap = scaleDown(getBitmap(cam_uri!!), screenWidth)
-                   // val bitmap = getBitmap(cam_uri!!)
-                    binding.imageView.setImageBitmap(bitmap!!)
-                    Log.d("myCameraImage", "${bitmap.width}")
+                    // val bitmap = getBitmap(cam_uri!!)
+                    if (bitmap != null) {
+                        Constants.faceBitmap = bitmap
+                        StoreManager.setCurrentOriginalBitmap(this, bitmap)
+                        startActivity(Intent(this, BackgroundRemover::class.java))
+                    }
                 } else {
                     Log.d("myCameraImage", "image is not save")
                 }
@@ -212,7 +218,12 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
             if (cam_uri != null) {
                 Log.d("myCameraImage", "image is save")
                 val bitmap = getBitmap(cam_uri!!)
-                binding.imageView.setImageBitmap(bitmap!!)
+                if (bitmap != null) {
+                    SecondScreen.setFaceBitmap(bitmap)
+                    StoreManager.setCurrentOriginalBitmap(this, bitmap)
+                    startActivity(Intent(this, SecondScreen::class.java))
+                }
+                //binding.imageView.setImageBitmap(bitmap!!)
             } else {
                 Log.d("myCameraImage", "image is not save")
             }
@@ -229,8 +240,12 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
                 if (value != null) {
                     val bitmap = scaleDown(getBitmap(value), screenWidth)
-                   // val bitmap = getBitmap(value)
-                    binding.imageView.setImageBitmap(bitmap!!)
+                    //binding.imageView.setImageBitmap(bitmap!!)
+                    if (bitmap != null) {
+                        Constants.faceBitmap = bitmap
+                        StoreManager.setCurrentOriginalBitmap(this, bitmap)
+                        startActivity(Intent(this, BackgroundRemover::class.java))
+                    }
                 }
 
                 Log.d("myData", "${value}")
@@ -477,7 +492,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
 
         if (realImage != null) {
 
-            Log.d("myBitmapVal", "${realImage.width} -- ${realImage.height} -- max width ${maxImageSize}")
+            Log.d(
+                "myBitmapVal",
+                "${realImage.width} -- ${realImage.height} -- max width ${maxImageSize}"
+            )
 
             return if (realImage.width > maxImageSize || realImage.height > maxImageSize) {
 

@@ -52,4 +52,9 @@ dependencies {
 
     // For developers using AndroidX in their applications
     implementation 'pub.devrel:easypermissions:3.0.0'
+
+    implementation 'org.tensorflow:tensorflow-android:1.13.1'
+
+    //noinspection KtxExtensionAvailable
+    implementation 'androidx.palette:palette:1.0.0'
 }
