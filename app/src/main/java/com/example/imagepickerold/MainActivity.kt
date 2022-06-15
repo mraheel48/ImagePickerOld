@@ -196,6 +196,7 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
             if (success) {
 
                 if (cam_uri != null) {
+                   // val bitmap = scaleDown(getBitmap(cam_uri!!), screenWidth)
                     val bitmap = scaleDown(getBitmap(cam_uri!!), screenWidth)
                     // val bitmap = getBitmap(cam_uri!!)
                     if (bitmap != null) {
@@ -239,8 +240,10 @@ class MainActivity : AppCompatActivity(), EasyPermissions.PermissionCallbacks {
                 val value = it.data?.data
 
                 if (value != null) {
-                    val bitmap = scaleDown(getBitmap(value), screenWidth)
-                    //binding.imageView.setImageBitmap(bitmap!!)
+                    //val bitmap = scaleDown(getBitmap(value), screenWidth)
+                    val bitmap = com.example.imagepickerold.utils.Constants.getBitmapFromUri(this,
+                        value,screenWidth,screenWidth)
+
                     if (bitmap != null) {
                         Constants.mainBitmap = bitmap
                         StoreManager.setCurrentOriginalBitmap(this, bitmap)
