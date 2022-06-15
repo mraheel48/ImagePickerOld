@@ -20,39 +20,25 @@ import com.example.imagepickerold.utils.ImageUtils;
 
 public class SecondScreen extends AppCompatActivity {
 
-    private static Bitmap faceBitmap;
-
     private Bitmap selectedBit;
-    private ImageView setback;
     private ImageView setimg;
     public ImageView seafront;
-    private ImageView iv_face;
-
-    public static void setFaceBitmap(Bitmap bitmap) {
-        faceBitmap = bitmap;
-    }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_second_screen);
 
-        Log.d("myBitMap", String.valueOf(faceBitmap.getWidth()));
-
-
         seafront = findViewById(R.id.setfront);
-        setback = findViewById(R.id.setback);
-        iv_face = findViewById(R.id.iv_face);
         setimg = findViewById(R.id.setimg);
 
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
 
             public void run() {
                 SecondScreen.this.setimg.post((Runnable) () -> {
-                    if (faceBitmap != null) {
-                        selectedBit = faceBitmap;
-                        setimg.setImageBitmap(selectedBit);
+                    if (Constants.getMainBitmap() != null) {
+                        selectedBit = Constants.getMainBitmap();
+                        setimg.setImageBitmap(Constants.getMainBitmap());
                         initBMPNew();
                     }
                 });
